@@ -12,8 +12,8 @@
     <body>
         <nav>
             <ul>
-                <li>Welcome {{user}}</li>
-                <li><a href="#">Log Out</a></li>
+                <li>Welcome {{user.username}}</li>
+                <li><a href="{{ url_for('logout') }}">Log Out</a></li>
             </ul>
         </nav>
         <div class="container mt-4">
@@ -24,7 +24,11 @@
                             <h4 class="card-title">Balance</h4>
                             <h6 class="card-subtitle">All currencies</h6>
                             <ul class="card-list">
-                                <li></li>
+                                <li class="balance">
+                                    {% for currency, value in balance.items() %}
+                                        {{ value }} {{ currency }} <br>
+                                    {% endfor %}
+                                </li>
                             </ul>
                         </div>
                     </div>
@@ -37,7 +41,11 @@
                             <h4 class="card-title">Transaction history</h4>
                             <h6 class="card-subtitle">All time</h6>
                             <ul class="card-list">
-                                <li></li>
+                                <li class="transactions">
+                                    {% for transaction in transactions %}
+                                        {{ transaction }}<br>
+                                    {% endfor %}                                  
+                                </li>
                             </ul>
                         </div>
                     </div>
@@ -45,9 +53,17 @@
                 <div class="col-sm-4 order-lg-2">
                     <div class="row">
                         <div class="col-12 d-flex justify-content-center mb-4">
-                            <button class="btn btn-primary btn-block mx-1" type="button">Pay</button>
-                            <button class="btn btn-success btn-block mx-1" type="button">Receive</button>
-                        </div>
+                            <form method="POST" action="{{ url_for('index') }}" class="d-flex">
+                                <input type="number" step="0.01" name="amount" required>
+                                <select name="currency" required>
+                                    <option value="CZK">CZK</option>
+                                    <option value="EUR">EUR</option>
+                                    <option value="USD">USD</option>
+                                </select>
+                                <button class="btn btn-primary btn-block mx-1" type="submit" name="action" value="pay">Pay</button>
+                                <button class="btn btn-success btn-block mx-1" type="submit" name="action" value="receive">Receive</button>
+                            </form>
+                        </div>                        
                     </div>
                 </div>
             </div>
