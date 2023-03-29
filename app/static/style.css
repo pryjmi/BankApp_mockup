@@ -51,6 +51,14 @@ button {
     text-transform: uppercase;
 }
 
+.balance {
+    text-align: right;
+}
+.transactions {
+    text-align: right;
+    justify-content: space-between;
+}
+
 @media (max-width: 575px) {
     .order-lg-1 {
         order: 2;
