@@ -58,6 +58,9 @@ button {
     text-align: right;
     justify-content: space-between;
 }
+.history_amount {
+    text-align: right;
+}
 
 @media (max-width: 575px) {
     .order-lg-1 {

@@ -85,6 +85,44 @@ def save_exchange_rate(date_to_use, exchange_rates, path):
     with open(path, "w") as file:
         json.dump(exchange_rates, file)
 
+##################################################### BALANCE ##############################################################
+
+def get_balance(balance_file_path="app/balance.json"):
+    with open(balance_file_path, "r") as file:
+        balance = json.load(file)
+    return balance
+
+def update_balance(amount, currency, balance_file_path="app/balance.json"):
+    balance = get_balance()
+    if currency in balance:
+        balance[currency] += amount
+    else:
+        balance[currency] = amount
+    
+    with open(balance_file_path, "w") as file:
+        json.dump(balance, file)
+
+############################################### TRANSACTION HISTORY #########################################################
+
+def get_transactions(transactions_file_path="app/transactions.json"):
+    with open(transactions_file_path, "r") as file:
+        transactions = json.load(file)
+    return transactions
+
+def update_transactions(amount, currency, transactions_file_path="app/transactions.json"):
+    transactions = get_transactions()
+    date = datetime.datetime.now().strftime("%d.%m.%Y")
+    value = f"{amount:.2f}" if str(amount).startswith("-") else f"+{amount:.2f}"
+    new_transaction = {
+        date: {
+            currency: value
+            }
+        }
+
+    transactions.append(new_transaction)
+
+    with open(transactions_file_path, "w") as file:
+        json.dump(transactions, file)
 
 
 ###################################################### HOMEPAGE ############################################################
@@ -93,11 +131,22 @@ def save_exchange_rate(date_to_use, exchange_rates, path):
 @app.route("/index", methods=["GET", "POST"])
 @login_required
 def index():
-    
-        
+    if request.method == "POST":
+        amount = float(request.form["amount"])
+        currency = request.form["currency"]
+        action = request.form["action"]
+
+        if action == "pay":
+            amount = -amount
+
+        update_balance(amount, currency)
+        update_transactions(amount, currency)
+
+    balance = get_balance()
+    transactions = get_transactions()
     get_exchange_rate()
     
-    return render_template("index.html", user=current_user)
+    return render_template("index.html", user=current_user, balance=balance, transactions=transactions)
 
 ################################################### AUTHENTICATION ##########################################################
 
