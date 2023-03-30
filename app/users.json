@@ -1,4 +1,8 @@
-{"testing.pryjmi@gmail.com": {"username": "test", "password": "testpassword"},
+{
+    "testing.pryjmi@gmail.com": {
+        "username": "test", 
+        "password": "testpassword"
+    },
     "test@example.com": {
         "username": "Test User",
         "password": "test_password"

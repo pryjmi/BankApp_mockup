@@ -40,32 +40,56 @@
                         <div class="card-body">
                             <h4 class="card-title">Transaction history</h4>
                             <h6 class="card-subtitle">All time</h6>
-                            <ul class="card-list">
-                                <li class="transactions">
-                                    {% for transaction in transactions %}
-                                        {{ transaction }}<br>
-                                    {% endfor %}                                  
-                                </li>
-                            </ul>
-                        </div>
+                            <table class="table table-striped">
+                                <tbody>
+                                    {% for transaction in transactions[::-1] %}
+                                        {% for date, currency_data in transaction.items() %}
+                                            <tr>
+                                                <td>{{ date }}</td>
+                                                <td class="history_amount">
+                                                    {% for currency, amount in currency_data.items() %}
+                                                        {% set num_amount = amount|float %}
+                                                        <span class="{{ 'text-success' if num_amount > 0 else 'text-danger' }}">{{ amount }} {{ currency }}</span>
+                                                    {% endfor %}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>                                               
                     </div>
                 </div>
                 <div class="col-sm-4 order-lg-2">
                     <div class="row">
                         <div class="col-12 d-flex justify-content-center mb-4">
-                            <form method="POST" action="{{ url_for('index') }}" class="d-flex">
-                                <input type="number" step="0.01" name="amount" required>
-                                <select name="currency" required>
-                                    <option value="CZK">CZK</option>
-                                    <option value="EUR">EUR</option>
-                                    <option value="USD">USD</option>
-                                </select>
-                                <button class="btn btn-primary btn-block mx-1" type="submit" name="action" value="pay">Pay</button>
-                                <button class="btn btn-success btn-block mx-1" type="submit" name="action" value="receive">Receive</button>
+                            <form method="POST" action="{{ url_for('index') }}" class="w-100">
+                                <div class="row mb-2">
+                                    <div class="col">
+                                        <input type="number" step="0.01" name="amount" required class="form-control">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col">
+                                        <select name="currency" required class="form-select">
+                                            <option value="CZK">CZK</option>
+                                            <option value="EUR">EUR</option>
+                                            <option value="USD">USD</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col">
+                                        <button class="btn btn-primary btn-block mx-1" type="submit" name="action" value="pay">Pay</button>
+                                    </div>
+                                    <div class="col">
+                                        <button class="btn btn-success btn-block mx-1" type="submit" name="action" value="receive">Receive</button>
+                                    </div>
+                                </div>
                             </form>
                         </div>                        
                     </div>
-                </div>
+                </div>                
             </div>
         </div>
     </body>
