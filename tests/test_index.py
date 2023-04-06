@@ -32,9 +32,9 @@ def test_index_post(client, monkeypatch, tmp_path):
     balance_file.write_text(json.dumps({}))
     transactions_file.write_text(json.dumps([]))
 
-    monkeypatch.setattr("app.views.get_balance", lambda: json.loads(balance_file.read_text()))
+    monkeypatch.setattr("app.views.get_balance", lambda user_email: json.loads(balance_file.read_text()))
     monkeypatch.setattr("app.views.update_balance", lambda amount, currency: (balance_file.write_text(json.dumps({currency: amount})), currency, amount))
-    monkeypatch.setattr("app.views.get_transactions", lambda: json.loads(transactions_file.read_text()))
+    monkeypatch.setattr("app.views.get_transactions", lambda user_email: json.loads(transactions_file.read_text()))
     monkeypatch.setattr("app.views.update_transactions", lambda amount, currency: transactions_file.write_text(json.dumps([{datetime.datetime.now().strftime("%d.%m.%Y"): {currency: f"+{amount:.2f}"}}])))
 
-    response = client.post("/index", data={"amount": "100", "currency": "USD", "action": "add"})
+    response = client.post("/index", data={"amount": "100", "currency": "USD"})

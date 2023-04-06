@@ -8,5 +8,10 @@
         "first_name": "Test",
         "last_rname": "User",
         "password": "test_password"
+    },
+    "jaroslav.pryjmak@tul.cz": {
+        "first_name": "Jaroslav",
+        "last_name": "Pryjmak",
+        "password": "heslo"
     }
 }

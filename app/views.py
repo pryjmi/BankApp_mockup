@@ -90,13 +90,16 @@ def save_exchange_rate(date_to_use, exchange_rates, path):
 
 ##################################################### BALANCE ##############################################################
 
-def get_balance(balance_file_path="app/balance.json"):
+def get_balance(user_email, balance_file_path="app/balance.json"):
     with open(balance_file_path, "r") as file:
-        balance = json.load(file)
-    return balance
+        balances = json.load(file)
+    return balances.get(user_email, {})
 
-def update_balance(amount, currency, balance_file_path="app/balance.json"):
-    balance = get_balance()
+def update_balance(user_email, amount, currency, balance_file_path="app/balance.json"):
+    with open(balance_file_path, "r") as file:
+        all_balances = json.load(file)
+    balance = all_balances.get(user_email, {})
+
     exchange_rate = get_exchange_rate()
     date_to_use = get_date_to_use()
     msg = ""
@@ -106,7 +109,7 @@ def update_balance(amount, currency, balance_file_path="app/balance.json"):
 
     if amount < 0 and balance[currency] < -amount:
         if currency not in exchange_rate[date_to_use]:
-            msg =  "Currency not supported."
+            msg = "Currency not supported."
         else:
             amount_in_czk = -amount * (exchange_rate[date_to_use][currency]["rate"] / exchange_rate[date_to_use][currency]["amount"])
             if "CZK" in balance and balance["CZK"] >= amount_in_czk:
@@ -114,25 +117,27 @@ def update_balance(amount, currency, balance_file_path="app/balance.json"):
                 currency = "CZK"
                 amount = -amount_in_czk
             else:
-                msg =  "Not enough funds."
+                msg = "Not enough funds."
     else:
         balance[currency] += amount
 
+    all_balances[user_email] = balance
     with open(balance_file_path, "w") as file:
-        json.dump(balance, file)
+        json.dump(all_balances, file)
 
     return msg, currency, amount
 
-
 ############################################### TRANSACTION HISTORY #########################################################
 
-def get_transactions(transactions_file_path="app/transactions.json"):
+def get_transactions(user_email, transactions_file_path="app/transactions.json"):
     with open(transactions_file_path, "r") as file:
-        transactions = json.load(file)
-    return transactions
+        all_transactions = json.load(file)
+    return all_transactions.get(user_email, [])
 
-def update_transactions(amount, currency, transactions_file_path="app/transactions.json"):
-    transactions = get_transactions()
+def update_transactions(user_email, amount, currency, transactions_file_path="app/transactions.json"):
+    with open(transactions_file_path, "r") as file:
+        all_transactions = json.load(file)
+
     date = datetime.datetime.now().strftime("%d.%m.%Y")
     value = f"{amount:.2f}" if str(amount).startswith("-") else f"+{amount:.2f}"
     new_transaction = {
@@ -141,11 +146,13 @@ def update_transactions(amount, currency, transactions_file_path="app/transactio
             }
         }
 
-    transactions.append(new_transaction)
+    if user_email in all_transactions:
+        all_transactions[user_email].append(new_transaction)
+    else:
+        all_transactions[user_email] = [new_transaction]
 
     with open(transactions_file_path, "w") as file:
-        json.dump(transactions, file)
-
+        json.dump(all_transactions, file)
 
 ###################################################### HOMEPAGE ############################################################
 
@@ -154,8 +161,9 @@ def update_transactions(amount, currency, transactions_file_path="app/transactio
 @login_required
 def index():
     get_exchange_rate()
-    balance = get_balance()
-    transactions = get_transactions()
+    user_email = current_user.id
+    balance = get_balance(user_email)
+    transactions = get_transactions(user_email)
     err = ""
     
     if request.method == "POST":
@@ -166,12 +174,14 @@ def index():
         if action == "pay":
             amount = -amount
 
-        err, currency, amount = update_balance(amount, currency)
+        err, currency, amount = update_balance(current_user.id, amount, currency)
         if err == "":
-            update_transactions(amount, currency)
-    balance = get_balance()
-    transactions = get_transactions()
-    
+            update_transactions(current_user.id, amount, currency)
+
+
+    balance = get_balance(user_email)
+    transactions = get_transactions(user_email)
+
     return render_template("index.html", user=current_user, balance=balance, transactions=transactions, err=err)
 
 ################################################### AUTHENTICATION ##########################################################

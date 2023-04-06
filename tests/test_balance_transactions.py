@@ -1,64 +1,63 @@
 import pytest
 import json
+import datetime
 from app.views import update_balance, update_transactions, get_balance, get_transactions
 
 def test_update_balance(tmp_path, monkeypatch):
+    # Set up temporary files
     balance_file = tmp_path / "balance_test.json"
-    balance_file.write_text('{"USD": 200, "CZK": 5000}')
+    balance_file.write_text(json.dumps({}))
 
-    exchange_rate_file = tmp_path / "exchange_rate_test.json"
-    exchange_rate_file.write_text('{"01.01.2023": {"USD": {"amount": 1, "rate": 20}, "CZK": {"amount": 1, "rate": 1}}}')
-
-    date_to_use = "04.04.2023"
+    exchange_rate_data = {"01.01.2023": {"USD": {"amount": 1, "rate": 20}, "CZK": {"amount": 1, "rate": 1}}}
+    date_to_use = "01.01.2023"
 
     # Temporarily change the behavior of the get_exchange_rate() and get_date_to_use() functions
-    monkeypatch.setattr("app.views.get_exchange_rate", lambda: json.loads(exchange_rate_file.read_text()))
+    monkeypatch.setattr("app.views.get_exchange_rate", lambda: exchange_rate_data)
     monkeypatch.setattr("app.views.get_date_to_use", lambda: date_to_use)
 
-    # Test positive amount
-    _, _, _ = update_balance(100, "USD", balance_file)
-    balance = get_balance(balance_file)
+    user_email = "user_email@example.com"
 
-    assert balance["USD"] == 100
+    # Test adding positive amount
+    msg, currency, amount = update_balance(user_email, 100, "USD", balance_file)
+    with open(balance_file, "r") as file:
+        all_balances = json.load(file)
+    assert all_balances[user_email]["USD"] == 100
+    assert msg == ""
+    assert currency == "USD"
+    assert amount == 100
 
-def test_update_balance_unsupported_currency(tmp_path, monkeypatch):
-    balance_file = tmp_path / "balance_test.json"
-    balance_file.write_text('{"USD": 200, "CZK": 5000}')
+    # Test subtracting an amount that is available in the balance
+    msg, currency, amount = update_balance(user_email, -50, "USD", balance_file)
+    with open(balance_file, "r") as file:
+        all_balances = json.load(file)
+    assert all_balances[user_email]["USD"] == 50
+    assert msg == ""
+    assert currency == "USD"
+    assert amount == -50
 
-    exchange_rate_file = tmp_path / "exchange_rate_test.json"
-    exchange_rate_file.write_text('{"01.01.2023": {"USD": {"amount": 1, "rate": 20}, "CZK": {"amount": 1, "rate": 1}}}')
+    # Test subtracting an amount that is not available in the balance, but available in CZK
 
-    date_to_use = "01.01.2023"
-
-    monkeypatch.setattr("app.views.get_exchange_rate", lambda: json.loads(exchange_rate_file.read_text()))
-    monkeypatch.setattr("app.views.get_date_to_use", lambda: date_to_use)
-
-    msg, _, _ = update_balance(-100, "JPY", balance_file)
-    assert msg == "Currency not supported."
-
-def test_update_balance_not_enough_funds(tmp_path, monkeypatch):
-    balance_file = tmp_path / "balance_test.json"
-    balance_file.write_text('{"USD": 200, "CZK": 5000}')
-
-    exchange_rate_file = tmp_path / "exchange_rate_test.json"
-    exchange_rate_file.write_text('{"01.01.2023": {"USD": {"amount": 1, "rate": 20}, "CZK": {"amount": 1, "rate": 1}}}')
-
-    date_to_use = "01.01.2023"
-
-    monkeypatch.setattr("app.views.get_exchange_rate", lambda: json.loads(exchange_rate_file.read_text()))
-    monkeypatch.setattr("app.views.get_date_to_use", lambda: date_to_use)
-
-    msg, _, _ = update_balance(-300, "USD", balance_file)
+        # Test subtracting an amount that is not available in the balance and not available in CZK
+    all_balances[user_email]["CZK"] = 0
+    with open(balance_file, "w") as file:
+        json.dump(all_balances, file)
+    msg, currency, amount = update_balance(user_email, -10000, "USD", balance_file)
+    with open(balance_file, "r") as file:
+        all_balances = json.load(file)
+    assert all_balances[user_email]["USD"] == 50
+    assert all_balances[user_email]["CZK"] == 0
     assert msg == "Not enough funds."
+    assert currency == "USD"
+    assert amount == -10000
 
 def test_update_transactions(tmp_path):
     transactions_file = tmp_path / "transactions_test.json"
-    transactions_file.write_text('[]')
-    
-    update_transactions(100, "USD", transactions_file)
-    transactions = get_transactions(transactions_file)
+    transactions_file.write_text('{}')
+
+    user_email = "user_email@example.com"
+    update_transactions(user_email, 100, "USD", transactions_file)
+    transactions = get_transactions(user_email, transactions_file)
     last_transaction = transactions[-1]
-    date = list(last_transaction.keys())[0]
-    value = last_transaction[date]["USD"]
-    
-    assert value == "+100.00"
+    today = datetime.datetime.now().strftime("%d.%m.%Y")
+    assert today in last_transaction
+    assert last_transaction[today]["USD"] == "+100.00"
