@@ -1,10 +1,12 @@
 {
     "testing.pryjmi@gmail.com": {
-        "username": "test", 
+        "first_name": "test", 
+        "last_name": "surname",
         "password": "testpassword"
     },
     "test@example.com": {
-        "username": "Test User",
+        "first_name": "Test",
+        "last_rname": "User",
         "password": "test_password"
     }
 }

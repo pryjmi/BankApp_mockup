@@ -17,9 +17,10 @@ login_manager.init_app(app)
 ##################################################### INIT USER ###########################################################
 
 class User(UserMixin):
-    def __init__(self, id, username, password):
+    def __init__(self, id, first_name, last_name, password):
         self.id = id
-        self.username = username
+        self.first_name = first_name
+        self.last_name = last_name
         self.password = password
         self.pin = None
 
@@ -29,7 +30,7 @@ def load_user(user_id):
         users = json.load(file)
     return next(
         (
-            User(user_id, user_data["username"], user_data["password"])
+            User(user_id, user_data["first_name"], user_data["last_name"], user_data["password"])
             for email, user_data in users.items()
             if user_id == email
         ),
@@ -67,6 +68,8 @@ def get_exchange_rate(path=None):
     if date_to_use not in exchange_rates:
         save_exchange_rate(date_to_use, exchange_rates, path)
 
+    return exchange_rates
+
 
 def save_exchange_rate(date_to_use, exchange_rates, path):
     url = f"https://www.cnb.cz/cs/financni-trhy/devizovy-trh/kurzy-devizoveho-trhu/kurzy-devizoveho-trhu/denni_kurz.txt;jsessionid=4809CDD45D1657F6A4F2F9A435E55F13?date={date_to_use}"
@@ -94,13 +97,32 @@ def get_balance(balance_file_path="app/balance.json"):
 
 def update_balance(amount, currency, balance_file_path="app/balance.json"):
     balance = get_balance()
-    if currency in balance:
-        balance[currency] += amount
+    exchange_rate = get_exchange_rate()
+    date_to_use = get_date_to_use()
+    msg = ""
+
+    if currency not in balance:
+        balance[currency] = 0
+
+    if amount < 0 and balance[currency] < -amount:
+        if currency not in exchange_rate[date_to_use]:
+            msg =  "Currency not supported."
+        else:
+            amount_in_czk = -amount * (exchange_rate[date_to_use][currency]["rate"] / exchange_rate[date_to_use][currency]["amount"])
+            if "CZK" in balance and balance["CZK"] >= amount_in_czk:
+                balance["CZK"] -= amount_in_czk
+                currency = "CZK"
+                amount = -amount_in_czk
+            else:
+                msg =  "Not enough funds."
     else:
-        balance[currency] = amount
-    
+        balance[currency] += amount
+
     with open(balance_file_path, "w") as file:
         json.dump(balance, file)
+
+    return msg, currency, amount
+
 
 ############################################### TRANSACTION HISTORY #########################################################
 
@@ -131,6 +153,11 @@ def update_transactions(amount, currency, transactions_file_path="app/transactio
 @app.route("/index", methods=["GET", "POST"])
 @login_required
 def index():
+    get_exchange_rate()
+    balance = get_balance()
+    transactions = get_transactions()
+    err = ""
+    
     if request.method == "POST":
         amount = float(request.form["amount"])
         currency = request.form["currency"]
@@ -139,14 +166,13 @@ def index():
         if action == "pay":
             amount = -amount
 
-        update_balance(amount, currency)
-        update_transactions(amount, currency)
-
+        err, currency, amount = update_balance(amount, currency)
+        if err == "":
+            update_transactions(amount, currency)
     balance = get_balance()
     transactions = get_transactions()
-    get_exchange_rate()
     
-    return render_template("index.html", user=current_user, balance=balance, transactions=transactions)
+    return render_template("index.html", user=current_user, balance=balance, transactions=transactions, err=err)
 
 ################################################### AUTHENTICATION ##########################################################
 
@@ -171,7 +197,7 @@ def login():
         users = json.load(file)
     if email not in users or password != users[email]["password"]:
         return "Invalid email or password", 401
-    user = User(email, users[email]["username"], password)
+    user = User(email, users[email]["first_name"], users[email]["last_name"], password)
     login_user(user)
     pin = random.randint(1000, 9999)
     send_email_pin(email, pin)
