@@ -1,5 +1,6 @@
 from flask import render_template, Flask, jsonify, request, redirect, url_for, session, abort
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
+from apscheduler.schedulers.background import BackgroundScheduler
 import datetime
 import requests
 import os
@@ -56,8 +57,7 @@ def get_exchange_rate(path=None):
     date_to_use = get_date_to_use()
 
     if path is None:
-        file_name = "exchange_rates.json"
-        path = f"app/{file_name}"
+        path = "app/exchange_rates.json"
 
     if os.path.exists(path):
         with open(path, "r") as file:
@@ -188,7 +188,7 @@ def index():
 
 def send_email_pin(email, pin):
     sender_email = "testing.pryjmi@gmail.com"
-    sender_password = "mtrssidmnvkmdqka"
+    sender_password = "sauvdtwtdpkcynpk"
     receiver_email = email
     message = f"Subject: Your login pin\n\nYour pin is: {pin}"
     with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
@@ -213,6 +213,7 @@ def login():
     send_email_pin(email, pin)
     session["pin"] = str(pin)
     session["email"] = email
+    session["pin_expiry"] = (datetime.datetime.now() + datetime.timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
     return redirect(url_for("twofactor"))
 
 @app.route("/2fa", methods=["GET", "POST"])
@@ -220,6 +221,12 @@ def login():
 def twofactor():
     if request.method == "POST":
         pin = request.form["pin"]
+        expiry = datetime.datetime.strptime(session["pin_expiry"], "%Y-%m-%d %H:%M:%S")
+
+        if datetime.datetime.now() > expiry:
+            logout_user()
+            return redirect(url_for("login"))
+
         if pin == session["pin"]:
             return redirect(url_for("index"))
         else:
