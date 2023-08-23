@@ -4,6 +4,10 @@ This repository contains the source code for a banking application designed to p
 
 The project consists of a client-side and a server-side component. The client-side allows the user to display account balance and transaction history. The server-side manages transactions and currency conversions.
 
+## Technology stack
+- Python (Flask) - backend
+- HTML + CSS (Bootstrap) - frontend
+
 ## Application Requirements
 
 The application is compatible with both PCs and mobile devices. For the application to function properly, it is recommended to use browsers such as Google Chrome (v. 110.0.5464.58 or newer), Mozilla Firefox (v. 103.0.5 or newer), Microsoft Edge (v. 110.0.5464.58 or newer), or Apple Safari (v. 15.3.1 or newer).
